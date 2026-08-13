@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ブロック崩しプロトタイプ</title>
   <style>
     * {
@@ -20,6 +20,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      min-height: 100svh; /* スマホのアドレスバー対策 */
       overflow: hidden;
     }
 
@@ -28,7 +29,8 @@
       position: relative;
       width: 100vw;
       max-width: 400px;
-      height: calc(100vw * 20 / 9);
+      height: 100vh;
+      height: 100svh;
       max-height: 888px;
       background-color: #000;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
@@ -37,23 +39,24 @@
       overflow: hidden;
     }
 
-    /* 上部スコアヘッダー */
+    /* 上部ヘッダー（画面上部10%エリア内に収める） */
     .header {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 50px;
+      height: 48px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 0 12px;
-      background: rgba(25, 25, 25, 0.85);
+      background: rgba(20, 20, 20, 0.9);
       z-index: 10;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .score-container {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
     }
 
@@ -72,41 +75,41 @@
       100% { transform: translate(0, 0) scale(1); }
     }
 
-    /* 左上ハイスコア表示エリア */
+    /* 左上ハイスコア表示エリア（ヘッダー下・邪魔にならない位置） */
     .highscore-box {
       position: absolute;
-      top: 55px;
+      top: 52px;
       left: 8px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 4px 8px;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      font-size: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 9px;
       z-index: 9;
       pointer-events: none;
     }
 
     .highscore-box h3 {
-      font-size: 11px;
+      font-size: 10px;
       color: #feca57;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       text-transform: uppercase;
     }
 
     .highscore-box ol {
-      padding-left: 14px;
+      padding-left: 12px;
       margin: 0;
     }
 
     .highscore-box li {
       color: #ddd;
-      line-height: 1.2;
+      line-height: 1.1;
     }
 
     /* 左右の危険発光ライン */
     .danger-line {
       position: absolute;
-      top: 50px;
+      top: 48px;
       bottom: 0;
       width: 4px;
       background: #ff0055;
@@ -154,8 +157,8 @@
     }
 
     .overlay h1 {
-      font-size: 26px;
-      margin-bottom: 16px;
+      font-size: 24px;
+      margin-bottom: 14px;
       color: #00f3ff;
       text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
     }
@@ -164,21 +167,21 @@
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
       margin-bottom: 20px;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.6;
       color: #e0e0e0;
       text-align: left;
     }
 
     .tutorial-content ul {
-      margin-top: 8px;
-      padding-left: 20px;
+      margin-top: 6px;
+      padding-left: 18px;
     }
 
     .tutorial-content li {
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .highlight-text {
@@ -192,8 +195,8 @@
     }
 
     .target-msg {
-      margin-top: 12px;
-      font-size: 15px;
+      margin-top: 10px;
+      font-size: 14px;
       font-weight: bold;
       color: #2ed573;
       text-align: center;
@@ -201,7 +204,7 @@
 
     .btn {
       padding: 12px 32px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: bold;
       background-color: #ff4757;
       color: white;
@@ -226,7 +229,7 @@
     <!-- UI ヘッダー -->
     <div class="header">
       <div class="score-container">SCORE: <span id="score">0</span></div>
-      <div id="status" style="font-size: 12px; color: #aaa;">タッチで操作</div>
+      <div id="status" style="font-size: 11px; color: #aaa;">スライド操作</div>
     </div>
 
     <!-- 左上 ハイスコア TOP5 -->
@@ -275,7 +278,7 @@
     const startBtn = document.getElementById('start-btn');
     const highscoreListEl = document.getElementById('highscore-list');
 
-    // 内部解像度 (20:9: 幅360px x 高さ800px)
+    // 解像度設定 (幅360px x 高さ800px)
     const GAME_WIDTH = 360;
     const GAME_HEIGHT = 800;
     canvas.width = GAME_WIDTH;
@@ -295,12 +298,12 @@
 
     const BASE_BALL_SPEED = 6.6;
 
-    // パドル
+    // パドル位置の再設計（画面下部10%を避け、底面から140px上に配置）
     const paddle = {
-      width: 80,
+      width: 76,
       height: 12,
-      x: (GAME_WIDTH - 80) / 2,
-      y: GAME_HEIGHT - 100,
+      x: (GAME_WIDTH - 76) / 2,
+      y: GAME_HEIGHT - 140, // 下部10%以上の余裕を確保
       speed: 8,
       dx: 0
     };
@@ -309,16 +312,16 @@
       return { x: x, y: y, radius: 6, dx: dx, dy: dy };
     }
 
-    // ブロックパラメータ
+    // ブロック配置領域の再設計（画面の上部10%〜55%の範囲内に限定）
     const TOTAL_BLOCKS = 100;
     const COLS = 10;
-    const BLOCK_SIZE = ((GAME_WIDTH - (COLS + 1) * 2) / COLS) * 0.5;
-    const TOP_LIMIT = 60;
-    const BOTTOM_LIMIT = GAME_HEIGHT * (2 / 3);
+    const BLOCK_SIZE = ((GAME_WIDTH - (COLS + 1) * 2) / COLS) * 0.48; // ややコンパクト化
+    const TOP_LIMIT = GAME_HEIGHT * 0.12;   // 画面上部12%（約96px）から配置
+    const BOTTOM_LIMIT = GAME_HEIGHT * 0.52; // 画面中央やや下52%（約416px）まで
 
     let blocks = [];
 
-    // ハイスコア読み込み・保存
+    // ハイスコア保存・読み込み
     function loadHighScores() {
       try {
         const saved = localStorage.getItem('breakout_highscores');
@@ -382,7 +385,7 @@
         
         do {
           overlaps = false;
-          x = Math.random() * (GAME_WIDTH - BLOCK_SIZE - 8) + 4;
+          x = Math.random() * (GAME_WIDTH - BLOCK_SIZE - 12) + 6;
           y = Math.random() * (BOTTOM_LIMIT - TOP_LIMIT - BLOCK_SIZE) + TOP_LIMIT;
 
           for (let b of blocks) {
@@ -407,7 +410,7 @@
       }
     }
 
-    // 操作処理
+    // タッチ・マウス操作
     function handleMove(clientX) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = GAME_WIDTH / rect.width;
@@ -443,7 +446,7 @@
         x: x,
         y: y,
         text: `${comboCount} Combo!`,
-        fontSize: Math.min(14 + comboCount * 2, 32),
+        fontSize: Math.min(14 + comboCount * 2, 30),
         color: colors[colorIndex],
         alpha: 1.0,
         dy: -1.5
@@ -480,9 +483,9 @@
       if (targets.length > 0) {
         popups.push({
           x: GAME_WIDTH / 2,
-          y: GAME_HEIGHT / 2,
+          y: GAME_HEIGHT * 0.6,
           text: `50pt BLOCK UPGRADE!`,
-          fontSize: 20,
+          fontSize: 18,
           color: '#ffd700',
           alpha: 1.0,
           dy: -1.0
@@ -521,9 +524,8 @@
       isGameRunning = false;
       saveHighScore(score);
 
-      // 結果画面用のUIへ切り替え
       overlayTitle.textContent = isWin ? 'CLEAR!!' : 'GAME OVER';
-      tutorialBox.style.display = 'none'; // チュートリアル部分を非表示
+      tutorialBox.style.display = 'none';
       overlayDesc.style.display = 'block';
       overlayDesc.textContent = `最終スコア: ${score} pt`;
       startBtn.textContent = 'もう一度プレイ';
@@ -557,13 +559,13 @@
           globalCombo = 0;
         }
 
-        // 上部壁（安全）
-        if (ball.y - ball.radius < 50) {
-          ball.y = 50 + ball.radius;
+        // 上部壁（安全）※ヘッダー48px分を考慮
+        if (ball.y - ball.radius < 48) {
+          ball.y = 48 + ball.radius;
           ball.dy *= -1;
         }
 
-        // 落下
+        // 画面下落下
         if (ball.y + ball.radius > GAME_HEIGHT) {
           balls.splice(bIndex, 1);
           continue;
